@@ -23,6 +23,7 @@ pub struct Block {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BlockChain {
     pub blocks: Vec<Block>, // 区块列表
+    pub transaction_pool: Vec<Transaction>,
 }
 
 impl Block {
@@ -48,9 +49,63 @@ impl Block {
 
 impl BlockChain {
     // 创建一个新的区块链
-    pub fn new() -> BlockChain {
-        BlockChain { blocks: vec![] }
+    pub fn new() -> Self {
+        let genesis_block = Block::new();
+        BlockChain {
+            blocks: vec![genesis_block],
+            transaction_pool: vec![],
+        }
     }
+    // 添加交易到交易池
+    pub fn add_transaction(&mut self, transaction: Transaction) {
+        self.transaction_pool.push(transaction);
+    }
+
+    // 挖矿：打包交易并生成新区块
+    pub fn mine_block(&mut self, miner_address: String) {
+        let previous_block = self.blocks.last().unwrap();
+        let previous_hash = previous_block.header.prev_block_hash.clone();
+        let mut new_block = Block {
+            header: BlockHeader {
+                version: previous_block.header.version + 1,
+                prev_block_hash: previous_hash,
+                merkle_root: calculate_merkle_root(&self.transaction_pool),
+                timestamp: Utc::now().timestamp() as u32,
+                bits: 0,
+                nonce: 0,
+            },
+            transactions: self.transaction_pool.clone(),
+        };
+
+        // 工作量证明（PoW）
+
+        // 将新区块添加到区块链
+        self.add_block(new_block);
+
+        // 清空交易池
+        self.transaction_pool.clear();
+
+        // 奖励矿工
+        // let reward_transaction = Transaction {
+        //     sender: String::from("0"), // 系统奖励
+        //     receiver: miner_address,
+        //     amount: 50, // 挖矿奖励
+        // };
+        // self.add_transaction(reward_transaction);
+    }
+
+    // // 工作量证明算法
+    // fn proof_of_work(&self, block: &mut Block) -> String {
+    //     let difficulty = 4; // 难度值，要求哈希值前 4 位为 0
+    //     loop {
+    //         let block_data = serde_json::to_string(&block).unwrap();
+    //         let hash = sha256_hash(&block_data);
+    //         if hash.starts_with(&"0".repeat(difficulty)) {
+    //             return hash;
+    //         }
+    //         block.nonce += 1;
+    //     }
+    // }
 
     pub fn add_block(&mut self, data: Block) {
         let mut new_block = data;
