@@ -1,28 +1,8 @@
 use crate::hash_function::{calculate_merkle_root, hash_block_header};
+use crate::transaction::Transaction;
 use chrono::Utc;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct TxIn {
-    pub previous_output: [u8; 32], // 交易输入的哈希值
-    pub script_sig: Vec<u8>,       // 解锁脚本
-    pub sequence: u32,             // 序列号
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct TxOut {
-    pub value: u64,             // 交易输出金额
-    pub script_pubkey: Vec<u8>, // 锁定脚本
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Transaction {
-    pub version: u32,        // 版本号
-    pub inputs: Vec<TxIn>,   // 交易输入
-    pub outputs: Vec<TxOut>, // 交易输出
-    pub lock_time: u32,      // 锁定时间
-}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BlockHeader {

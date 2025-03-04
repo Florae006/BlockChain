@@ -2,7 +2,8 @@ use ring::digest::{Context, Digest, SHA256};
 
 use crate::block_chain;
 use crate::serialization::serialize_bc;
-use block_chain::{BlockHeader, Transaction};
+use crate::transaction::Transaction;
+use block_chain::BlockHeader;
 
 /// 计算 SHA-256 哈希值
 pub fn sha256_hash(data: &[u8]) -> Digest {
