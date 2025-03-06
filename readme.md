@@ -38,11 +38,11 @@ curl http://127.0.0.1:3030/blocks
 
 建立交易及交易池状态
 
-![](/img/image01.png)
+![](./static/img/image01.png)
 
 挖矿
 
-![](/img/image02.png)
+![](./static/img/image02.png)
 
 ## 项目要求
 
