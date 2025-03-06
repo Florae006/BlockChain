@@ -167,6 +167,9 @@ impl BlockChain {
             });
         }
     }
+    pub fn blocks(self) -> Vec<Block> {
+        self.blocks
+    }
     // 添加交易到交易池
     pub fn add_transaction(&mut self, transaction: Transaction) {
         let mut pool = self.transaction_pool.lock().unwrap();
