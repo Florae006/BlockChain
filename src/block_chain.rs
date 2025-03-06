@@ -1,11 +1,111 @@
 use crate::hash_function::{calculate_merkle_root, hash_block_header};
-// use crate::serialization::serialize_bc;
+
 use crate::transaction::Transaction;
 use chrono::Utc;
 use rand::Rng;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+use serde::de::{self, Visitor};
+use serde::{ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
+use std::collections::VecDeque;
+use std::fmt;
+use std::sync::{Arc, Mutex};
+
+#[derive(Debug, Clone)]
+pub struct BlockChain {
+    pub blocks: Vec<Block>, // 区块列表
+    pub transaction_pool: Arc<Mutex<VecDeque<Transaction>>>,
+    difficulty: usize,
+}
+
+// 手动实现 Serialize 和 Deserialize
+impl Serialize for BlockChain {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let transaction_pool = self.transaction_pool.lock().unwrap();
+        let mut state = serializer.serialize_struct("BlockChain", 3)?;
+        state.serialize_field("blocks", &self.blocks)?;
+        state.serialize_field("transaction_pool", &*transaction_pool)?;
+        state.serialize_field("difficulty", &self.difficulty)?;
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for BlockChain {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(field_identifier, rename_all = "lowercase")]
+        enum Field {
+            Blocks,
+            TransactionPool,
+            Difficulty,
+        }
+
+        struct BlockChainVisitor;
+
+        impl<'de> Visitor<'de> for BlockChainVisitor {
+            type Value = BlockChain;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("struct BlockChain")
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<BlockChain, V::Error>
+            where
+                V: de::MapAccess<'de>,
+            {
+                let mut blocks = None;
+                let mut transaction_pool = None;
+                let mut difficulty = None;
+
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Blocks => {
+                            if blocks.is_some() {
+                                return Err(de::Error::duplicate_field("blocks"));
+                            }
+                            blocks = Some(map.next_value()?);
+                        }
+                        Field::TransactionPool => {
+                            if transaction_pool.is_some() {
+                                return Err(de::Error::duplicate_field("transaction_pool"));
+                            }
+                            let pool: VecDeque<Transaction> = map.next_value()?;
+                            transaction_pool = Some(Arc::new(Mutex::new(pool)));
+                        }
+                        Field::Difficulty => {
+                            if difficulty.is_some() {
+                                return Err(de::Error::duplicate_field("difficulty"));
+                            }
+                            difficulty = Some(map.next_value()?);
+                        }
+                    }
+                }
+
+                let blocks = blocks.ok_or_else(|| de::Error::missing_field("blocks"))?;
+                let transaction_pool =
+                    transaction_pool.ok_or_else(|| de::Error::missing_field("transaction_pool"))?;
+                let difficulty =
+                    difficulty.ok_or_else(|| de::Error::missing_field("difficulty"))?;
+
+                Ok(BlockChain {
+                    blocks,
+                    transaction_pool,
+                    difficulty,
+                })
+            }
+        }
+
+        const FIELDS: &'static [&'static str] = &["blocks", "transaction_pool", "difficulty"];
+        deserializer.deserialize_struct("BlockChain", FIELDS, BlockChainVisitor)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BlockHeader {
     pub version: u32,              // 版本号
     pub prev_block_hash: [u8; 32], // 前一个区块的哈希值
@@ -15,7 +115,7 @@ pub struct BlockHeader {
     pub nonce: u32,                // 随机数
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Block {
     pub header: BlockHeader,
     pub transactions: Vec<Transaction>, // 交易列表
@@ -43,39 +143,55 @@ impl Block {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct BlockChain {
-    pub blocks: Vec<Block>, // 区块列表
-    pub transaction_pool: Vec<Transaction>,
-}
-
 impl BlockChain {
     // 创建一个新的区块链
-    pub fn new() -> Self {
+    pub fn new(difficulty: usize) -> Self {
         let genesis_block = Block::new();
         BlockChain {
             blocks: vec![genesis_block],
-            transaction_pool: vec![],
+            transaction_pool: Arc::new(Mutex::new(VecDeque::new())),
+            difficulty,
+        }
+    }
+    pub fn broadcast_transaction(&self, tx: Transaction, peers: Vec<String>) {
+        for peer in peers {
+            let client = reqwest::Client::new();
+            let url = format!("http://{}/transaction", peer);
+            let tx_clone = tx.clone();
+            tokio::spawn(async move {
+                let res = client.post(&url).json(&tx_clone).send().await;
+                match res {
+                    Ok(_) => println!("Transaction broadcasted to {}", peer),
+                    Err(e) => println!("Failed to broadcast to {}: {}", peer, e),
+                }
+            });
         }
     }
     // 添加交易到交易池
     pub fn add_transaction(&mut self, transaction: Transaction) {
-        self.transaction_pool.push(transaction);
+        let mut pool = self.transaction_pool.lock().unwrap();
+        pool.push_back(transaction);
     }
 
-    pub fn mine_block(&mut self, difficulty: usize) {
+    pub fn mine_block(&mut self) {
         let mut new_block = Block::new();
         // 将交易池中的交易添加到新区块的交易列表
-        new_block.transactions = self.transaction_pool.clone();
+        new_block.transactions = self
+            .transaction_pool
+            .lock()
+            .unwrap()
+            .iter()
+            .cloned()
+            .collect();
         // 清空交易池
-        self.transaction_pool.clear();
+        self.transaction_pool.lock().unwrap().clear();
         // 计算新区块的 Merkle Root（假设交易列表已经设置）
         new_block.header.merkle_root = calculate_merkle_root(&new_block.transactions);
         println!("Mining block...");
         // 计算新区块的哈希值
         let mut hash = hash_block_header(&new_block.header);
         println!("Hash: {:?}", hash);
-        while !hash.starts_with(&[0; 32][..difficulty]) {
+        while !hash.starts_with(&[0; 32][..self.difficulty]) {
             new_block.header.nonce += 1;
             hash = hash_block_header(&new_block.header);
         }
