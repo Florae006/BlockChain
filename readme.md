@@ -10,8 +10,39 @@ cargo run
 
 本地服务器接口使用：
 
+- 添加交易
+
 ```bash
+curl -X POST http://127.0.0.1:3030/transaction -H "Content-Type: application/json" -d '{"value":100,"lock_time":0}'
 ```
+
+- 查看交易池
+
+```bash
+curl http://127.0.0.1:3030/pool
+```
+
+- 查看区块链区块部分
+
+```bash
+curl http://127.0.0.1:3030/blocks
+```
+
+- 挖矿
+
+```bash
+ curl -X POST http://127.0.0.1:3030/mine
+```
+
+## 实验截图
+
+建立交易及交易池状态
+
+![](https://img.dodolalorc.cn/i/2025/03/06/67c9967b9075f.png)
+
+挖矿
+
+![](https://img.dodolalorc.cn/i/2025/03/06/67c99785d7f18.png)
 
 ## 项目要求
 

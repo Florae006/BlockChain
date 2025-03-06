@@ -48,7 +48,7 @@ pub struct Transaction {
 
 impl Transaction {
     // 创建一个新的交易
-    pub fn new(value: u64,lock_time: u32) -> Self {
+    pub fn new(value: u64, lock_time: u32) -> Self {
         let version = 0;
         let inputs = vec![TxIn::new()];
         let outputs = vec![TxOut::new(value)];

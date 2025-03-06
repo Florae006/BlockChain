@@ -167,9 +167,7 @@ impl BlockChain {
             });
         }
     }
-    pub fn blocks(self) -> Vec<Block> {
-        self.blocks
-    }
+
     // 添加交易到交易池
     pub fn add_transaction(&mut self, transaction: Transaction) {
         let mut pool = self.transaction_pool.lock().unwrap();
@@ -213,7 +211,6 @@ impl BlockChain {
         println!("Mining block...");
         // 计算新区块的哈希值
         let mut hash = hash_block_header(&new_block.header);
-        println!("Hash: {:?}", hash);
         while !hash.starts_with(&[0; 32][..self.difficulty]) {
             new_block.header.nonce += 1;
             hash = hash_block_header(&new_block.header);
@@ -221,8 +218,10 @@ impl BlockChain {
         // 将新区块添加到区块链
         self.add_block(new_block);
     }
+
     pub fn add_block(&mut self, data: Block) {
         let mut new_block = data;
+        println!("{:?}", self.blocks.len());
         if let Some(last_block) = self.blocks.last() {
             // 获取前一个区块的哈希值
             let prev_block_hash = hash_block_header(&last_block.header);
@@ -235,8 +234,6 @@ impl BlockChain {
 
         // 计算新区块的 Merkle Root（假设交易列表已经设置）
         new_block.header.merkle_root = calculate_merkle_root(&new_block.transactions);
-
-        // new_block.mine_block(1); // 假设难度是1
 
         // 将新区块添加到区块链
         self.blocks.push(new_block);
