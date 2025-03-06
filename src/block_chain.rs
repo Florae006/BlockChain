@@ -176,13 +176,33 @@ impl BlockChain {
     pub fn mine_block(&mut self) {
         let mut new_block = Block::new();
         // 将交易池中的交易添加到新区块的交易列表
-        new_block.transactions = self
+        // 获取当前区块高度和时间戳
+        let current_height = self.blocks.len() as u32;
+        let current_timestamp = Utc::now().timestamp() as u32;
+
+        // 过滤交易池中的交易
+        let valid_transactions: Vec<Transaction> = self
             .transaction_pool
             .lock()
             .unwrap()
             .iter()
+            .filter(|tx| {
+                if tx.lock_time == 0 {
+                    // lock_time 为 0，表示交易立即生效
+                    true
+                } else if tx.lock_time < 500_000_000 {
+                    // lock_time 表示区块高度
+                    current_height >= tx.lock_time
+                } else {
+                    // lock_time 表示时间戳
+                    current_timestamp >= tx.lock_time
+                }
+            })
             .cloned()
             .collect();
+
+        // 将有效的交易添加到新区块的交易列表
+        new_block.transactions = valid_transactions;
         // 清空交易池
         self.transaction_pool.lock().unwrap().clear();
         // 计算新区块的 Merkle Root（假设交易列表已经设置）

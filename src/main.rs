@@ -2,6 +2,13 @@ use warp::Filter;
 
 use ::block_chain::block_chain::BlockChain;
 use ::block_chain::transaction::Transaction;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct CreateTransactionRequest {
+    lock_time: u32,
+    value: u64,
+}
 
 async fn start_server(blockchain: BlockChain, port: u16) {
     let blockchain = warp::any().map(move || blockchain.clone());
@@ -11,11 +18,15 @@ async fn start_server(blockchain: BlockChain, port: u16) {
         .and(warp::post())
         .and(warp::body::json())
         .and(blockchain.clone())
-        .map(|tx: Transaction, mut blockchain: BlockChain| {
-            blockchain.add_transaction(tx.clone());
-            blockchain.broadcast_transaction(tx, vec!["127.0.0.1:3031".to_string()]);
-            warp::reply::json(&"Transaction created and broadcasted")
-        });
+        .map(
+            |req: CreateTransactionRequest, mut blockchain: BlockChain| {
+                // 使用 `Transaction::new()` 创建交易
+                let tx = Transaction::new(req.value, req.lock_time);
+                blockchain.add_transaction(tx.clone());
+                blockchain.broadcast_transaction(tx, vec!["127.0.0.1:3031".to_string()]);
+                warp::reply::json(&"Transaction created and broadcasted")
+            },
+        );
 
     // 挖矿
     let mine = warp::path("mine")
@@ -42,7 +53,7 @@ async fn start_server(blockchain: BlockChain, port: u16) {
 #[tokio::main]
 async fn main() {
     // 创建区块链
-    let blockchain = BlockChain::new(4);
+    let blockchain = BlockChain::new(1);
 
     // 启动 HTTP 服务器
     let server_handle = tokio::spawn(start_server(blockchain.clone(), 3030));

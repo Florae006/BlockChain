@@ -11,7 +11,10 @@ pub struct TxIn {
 }
 
 impl TxIn {
-    pub fn new(previous_output: [u8; 32], script_sig: Vec<u8>, sequence: u32) -> Self {
+    pub fn new() -> Self {
+        let previous_output: [u8; 32] = [0; 32];
+        let script_sig = Vec::new();
+        let sequence = 0;
         TxIn {
             previous_output,
             script_sig,
@@ -26,7 +29,8 @@ pub struct TxOut {
     pub script_pubkey: Vec<u8>, // 锁定脚本
 }
 impl TxOut {
-    pub fn new(value: u64, script_pubkey: Vec<u8>) -> Self {
+    pub fn new(value: u64) -> Self {
+        let script_pubkey: Vec<u8> = Vec::new();
         TxOut {
             value,
             script_pubkey,
@@ -44,7 +48,10 @@ pub struct Transaction {
 
 impl Transaction {
     // 创建一个新的交易
-    pub fn new(version: u32, inputs: Vec<TxIn>, outputs: Vec<TxOut>, lock_time: u32) -> Self {
+    pub fn new(value: u64,lock_time: u32) -> Self {
+        let version = 0;
+        let inputs = vec![TxIn::new()];
+        let outputs = vec![TxOut::new(value)];
         Transaction {
             version,
             inputs,
