@@ -38,11 +38,11 @@ curl http://127.0.0.1:3030/blocks
 
 建立交易及交易池状态
 
-![](https://img.dodolalorc.cn/i/2025/03/06/67c9967b9075f.png)
+![](/img/image01.png)
 
 挖矿
 
-![](https://img.dodolalorc.cn/i/2025/03/06/67c99785d7f18.png)
+![](/img/image02.png)
 
 ## 项目要求
 
