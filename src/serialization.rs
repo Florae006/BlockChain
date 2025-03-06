@@ -12,7 +12,7 @@ where
 
 pub fn deserialize_bc<'a, T>(bytes: &'a [u8]) -> Result<T, io::Error>
 where
-    T: Deserialize<'a>,
+    T: Deserialize<'a> + Clone,
 {
     let decoded: T = bincode::deserialize(bytes).unwrap();
     Ok(decoded)

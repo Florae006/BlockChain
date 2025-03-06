@@ -1,5 +1,5 @@
 use crate::hash_function::{calculate_merkle_root, hash_block_header};
-use crate::serialization::serialize_bc;
+// use crate::serialization::serialize_bc;
 use crate::transaction::Transaction;
 use chrono::Utc;
 use rand::Rng;
@@ -71,8 +71,10 @@ impl BlockChain {
         self.transaction_pool.clear();
         // 计算新区块的 Merkle Root（假设交易列表已经设置）
         new_block.header.merkle_root = calculate_merkle_root(&new_block.transactions);
+        println!("Mining block...");
         // 计算新区块的哈希值
         let mut hash = hash_block_header(&new_block.header);
+        println!("Hash: {:?}", hash);
         while !hash.starts_with(&[0; 32][..difficulty]) {
             new_block.header.nonce += 1;
             hash = hash_block_header(&new_block.header);
@@ -95,7 +97,7 @@ impl BlockChain {
         // 计算新区块的 Merkle Root（假设交易列表已经设置）
         new_block.header.merkle_root = calculate_merkle_root(&new_block.transactions);
 
-        // new_block.mine_block(4); // 假设难度是4
+        // new_block.mine_block(1); // 假设难度是1
 
         // 将新区块添加到区块链
         self.blocks.push(new_block);

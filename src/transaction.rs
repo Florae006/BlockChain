@@ -1,4 +1,5 @@
 use crate::hash_function::sha256_hash;
+use reqwest;
 use ring::signature::{Ed25519KeyPair, KeyPair};
 use serde::{Deserialize, Serialize};
 
@@ -7,20 +8,6 @@ pub struct TxIn {
     pub previous_output: [u8; 32], // 交易输入的哈希值
     pub script_sig: Vec<u8>,       // 解锁脚本
     pub sequence: u32,             // 序列号
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TxOut {
-    pub value: u64,             // 交易输出金额
-    pub script_pubkey: Vec<u8>, // 锁定脚本
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Transaction {
-    pub version: u32,        // 版本号
-    pub inputs: Vec<TxIn>,   // 交易输入
-    pub outputs: Vec<TxOut>, // 交易输出
-    pub lock_time: u32,      // 锁定时间
 }
 
 impl TxIn {
@@ -32,6 +19,12 @@ impl TxIn {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TxOut {
+    pub value: u64,             // 交易输出金额
+    pub script_pubkey: Vec<u8>, // 锁定脚本
+}
 impl TxOut {
     pub fn new(value: u64, script_pubkey: Vec<u8>) -> Self {
         TxOut {
@@ -39,6 +32,14 @@ impl TxOut {
             script_pubkey,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Transaction {
+    pub version: u32,        // 版本号
+    pub inputs: Vec<TxIn>,   // 交易输入
+    pub outputs: Vec<TxOut>, // 交易输出
+    pub lock_time: u32,      // 锁定时间
 }
 
 impl Transaction {
@@ -110,5 +111,17 @@ impl Transaction {
         let public_key =
             ring::signature::UnparsedPublicKey::new(&ring::signature::ED25519, public_key);
         public_key.verify(&message, signature.as_ref()).is_ok()
+    }
+
+    // 广播交易到其他节点
+    pub async fn broadcast_transaction(&self, node_url: &str) -> Result<(), reqwest::Error> {
+        let client = reqwest::Client::new();
+        let res = client
+            .post(&format!("{}/transactions", node_url))
+            .json(&self)
+            .send()
+            .await?;
+        res.error_for_status()?;
+        Ok(())
     }
 }
